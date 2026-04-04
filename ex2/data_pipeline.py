@@ -1,5 +1,29 @@
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Protocol
 from abc import ABC, abstractmethod
+
+
+class ExportPlugin(Protocol):
+    def process_output(self, data: list[tuple[int, str]]) -> None:
+        pass
+
+
+class CSV(ExportPlugin):
+    def __init__(self):
+        self.comma = True
+
+    def process_output(self, data: tuple[int, str]) -> None:
+        if not self.comma:
+            print(",", end="")
+        print(data[1], end="")
+        self.comma = False
+
+    def reset(self):
+        self.comma = True
+
+
+class JSON(ExportPlugin):
+    def process_output(self, data: tuple[int, str]) -> None:
+        print(f'{{"value": "{data[1]}"}}', end=",")
 
 
 class DataProcessor(ABC):
@@ -45,7 +69,8 @@ class DataStream:
                         handeled = True
 
                 if not handeled:
-                    print(f"DataStream error - Can’t process element in stream: {d}")
+                    print(f"DataStream error - "
+                          f"Can’t process element in stream: {d}")
 
     def print_processors_stats(self) -> None:
         if self.streams:
@@ -62,6 +87,17 @@ class DataStream:
                           f" remaining {remaining} on processor")
         else:
             print("No processor found, no data\n")
+
+    def output_pipeline(self, nb: int, plugin: ExportPlugin) -> None:
+        for proc in self.streams:
+            plugin.reset()
+            for _ in range(nb):
+                try:
+                    data = proc.output()
+                    plugin.process_output(data)
+                except IndexError:
+                    break
+            print()
 
 
 class NumericProcessor(DataProcessor):
@@ -167,7 +203,7 @@ class LogProcessor(DataProcessor):
 
 
 def main() -> None:
-    print("=== Code Nexus - Data Stream ===\n")
+    print("=== Code Nexus - Data Pipeline ===\n")
     print("Initialize Data Stream...")
     print("== DataStream statistics ==")
     data = [
@@ -191,29 +227,19 @@ def main() -> None:
     text_proc = TextProcessor()
     log_proc = LogProcessor()
     proc.print_processors_stats()
-    print("Registering Numeric Processor\n")
+    print("Registering Processors\n")
     print(f"Send first batch of data on stream:{data}")
     proc.register_processor(num_proc)
-
-    proc.process_stream(data)
-    proc.print_processors_stats()
-    print("\nRegistering other data processors")
     proc.register_processor(text_proc)
     proc.register_processor(log_proc)
-
-    print("Send the same batch again")
-    print("== DataStream statistics ==")
     proc.process_stream(data)
+    print("== DataStream statistics ==")
     proc.print_processors_stats()
-    print("\nConsume some elements from the data processors: Numeric 3, Text 2, Log 1")
 
-    for _ in range(3):
-        num_proc.output()
-    for _ in range(2):
-        text_proc.output()
-    for _ in range(1):
-        log_proc.output()
-
+    print("Send 3 processed data from each processor to a CSV plugin")
+    csv = CSV()
+    print("csv output:")
+    proc.output_pipeline(3, csv)
     print("== DataStream statistics ==")
     proc.print_processors_stats()
 
