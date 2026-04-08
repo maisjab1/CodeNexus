@@ -1,4 +1,4 @@
-from typing import Any, List, Dict
+from typing import Any
 from abc import ABC, abstractmethod
 
 
@@ -26,7 +26,7 @@ class DataProcessor(ABC):
 class DataStream:
     def __init__(self, data: Any) -> None:
         self.data = data
-        self.streams = []
+        self.streams: list[DataProcessor] = []
         self.processed_count = {"num": 0, "text": 0, "log": 0}
 
     def register_processor(self, proc: DataProcessor) -> None:
@@ -45,7 +45,8 @@ class DataStream:
                         handeled = True
 
                 if not handeled:
-                    print(f"DataStream error - Can’t process element in stream: {d}")
+                    print("DataStream error - "
+                          f"Can’t process element in stream: {d}")
 
     def print_processors_stats(self) -> None:
         if self.streams:
@@ -68,7 +69,7 @@ class NumericProcessor(DataProcessor):
     def __init__(self) -> None:
         super().__init__()
 
-    def ingest(self, data:  int | float | List[int] | list[float]) -> None:
+    def ingest(self, data: Any) -> None:
         try:
             if not self.validate(data):
                 return
@@ -99,7 +100,7 @@ class TextProcessor(DataProcessor):
     def __init__(self) -> None:
         super().__init__()
 
-    def ingest(self, data: str | list[str]) -> None:
+    def ingest(self, data: Any) -> None:
         try:
             if not self.validate(data):
                 return
@@ -129,7 +130,7 @@ class LogProcessor(DataProcessor):
     def __init__(self) -> None:
         super().__init__()
 
-    def ingest(self, data: dict[str, str] | List[Dict[str, str]]) -> None:
+    def ingest(self, data: Any) -> None:
         try:
             if not self.validate(data):
                 return
@@ -142,7 +143,7 @@ class LogProcessor(DataProcessor):
                         f"{item['log_level']}: {item['log_message']}")
                     self.processed_count += 1
         except Exception as e:
-            return f"Error: {str(e)}"
+            print(f"Error: {str(e)}")
 
     def validate(self, data: Any) -> bool:
         if isinstance(data, dict):
@@ -205,13 +206,14 @@ def main() -> None:
     print("== DataStream statistics ==")
     proc.process_stream(data)
     proc.print_processors_stats()
-    print("\nConsume some elements from the data processors: Numeric 3, Text 2, Log 1")
+    print("\nConsume some elements from the data processors:"
+          "Numeric 3, Text 2, Log 1")
 
-    for _ in range(3):
+    for i in range(3):
         num_proc.output()
-    for _ in range(2):
+    for i in range(2):
         text_proc.output()
-    for _ in range(1):
+    for i in range(1):
         log_proc.output()
 
     print("== DataStream statistics ==")
